@@ -1,0 +1,10 @@
+venv/
+.env
+__pycache__/
+*.pyc
+results/
+*.tar.gz
+.pytest_cache/
+*.egg-info/
+db_backups/
+gunicorn.pid

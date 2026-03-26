@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — 1177 Forms{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Dashboard</h1>
+    <p class="lead">Questionnaire assignments and responses</p>
+  </div>
+</div>
+
+<div class="dash-grid">
+  <div class="dash-card">
+    <i data-lucide="clock"></i>
+    <div class="count">{{ pending }}</div>
+    <h2>Pending</h2>
+    <p>Awaiting patient</p>
+  </div>
+  <div class="dash-card">
+    <i data-lucide="eye"></i>
+    <div class="count">{{ opened }}</div>
+    <h2>Opened</h2>
+    <p>In progress</p>
+  </div>
+  <div class="dash-card">
+    <i data-lucide="check-circle"></i>
+    <div class="count">{{ completed }}</div>
+    <h2>Completed</h2>
+    <p>Submitted</p>
+  </div>
+  <div class="dash-card">
+    <i data-lucide="inbox"></i>
+    <div class="count">{{ total_responses }}</div>
+    <h2>Responses</h2>
+    <p>Total collected</p>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,16 @@
+services:
+  db:
+    image: postgres:16
+    container_name: forms_1177_db
+    environment:
+      POSTGRES_USER: forms_user
+      POSTGRES_PASSWORD: forms_dev_password
+      POSTGRES_DB: forms_1177
+    ports:
+      - "127.0.0.1:9037:5432"
+    volumes:
+      - forms_1177_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  forms_1177_data:

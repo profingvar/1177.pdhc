@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}1177 Forms{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/pdhc.css') }}">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <nav>
+    <a class="brand" href="{{ url_for('admin.dashboard') }}">1177 Forms</a>
+    <ul class="nav-links">
+      {% if session.get('user') %}
+      <li><a href="{{ url_for('admin.dashboard') }}" {% if request.endpoint == 'admin.dashboard' %}class="active"{% endif %}>Dashboard</a></li>
+      <li class="nav-separator"></li>
+      <li><span style="opacity:0.7; font-size:11px;">{{ session['user'].get('username', '') }}</span></li>
+      <li><a href="{{ url_for('auth.logout') }}">Logout</a></li>
+      {% else %}
+      <li><a href="{{ url_for('auth.login') }}">Login</a></li>
+      {% endif %}
+    </ul>
+  </nav>
+
+  <div class="container-wide">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        <div class="flash flash-{{ category }}" role="alert">{{ message }}</div>
+      {% endfor %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </div>
+
+  <script>lucide.createIcons();</script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

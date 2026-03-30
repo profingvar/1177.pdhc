@@ -1,0 +1,387 @@
+{% extends "base.html" %}
+{% block title %}{{ questionnaire.get('title', 'Questionnaire') }} — 1177 Forms{% endblock %}
+
+{% block head %}
+<style>
+  .q-card { max-width: 640px; }
+  .q-title { margin-bottom: 0.2rem; }
+  .q-meta { color: var(--text-muted); font-size: 0.92em; margin-bottom: 1rem; }
+  .q-description { color: var(--text-muted); font-size: 0.92em; margin-bottom: 1.5rem; line-height: 1.5; }
+  .q-item { margin-bottom: 1.5rem; }
+  .q-item:last-child { margin-bottom: 0; }
+  .q-label { font-weight: 600; font-size: 0.92em; margin-bottom: 0.3rem; display: block; }
+  .q-required { color: var(--danger); margin-left: 0.15rem; }
+  .q-hint { color: var(--text-muted); font-size: 0.82em; margin-top: 0.15rem; display: block; }
+  .q-code { color: var(--text-muted); font-size: 0.78em; font-family: var(--monospace); opacity: 0.6; margin-left: 0.3rem; }
+  .q-display { color: var(--text-muted); font-style: italic; padding: 0.4rem 0; }
+  .q-group { border-left: 3px solid var(--border); padding-left: 1rem; margin-top: 0.5rem; }
+  .q-group-title { font-weight: 700; font-size: 1rem; margin-bottom: 0.75rem; }
+  .radio-group { display: flex; flex-direction: column; gap: 0.3rem; }
+  .radio-label {
+    display: flex; align-items: center; gap: 0.4rem;
+    font-weight: 400; font-size: 0.92em; cursor: pointer;
+    padding: 0.25rem 0.5rem; border-radius: 5px;
+  }
+  .radio-label:hover { background: var(--bg); }
+  .radio-label input[type="radio"],
+  .radio-label input[type="checkbox"] { margin: 0; accent-color: var(--primary); }
+  .answer-display {
+    background: var(--code-bg); padding: 0.3rem 0.6rem;
+    border-radius: 5px; font-size: 0.92em; display: inline-block;
+  }
+  .unit-suffix {
+    color: var(--text-muted); font-size: 0.88em; margin-left: 0.4rem;
+    font-style: italic;
+  }
+  .input-with-unit {
+    display: flex; align-items: center; gap: 0.4rem; max-width: 16rem;
+  }
+  .input-with-unit input { flex: 1; }
+  /* ── Mechanical slider ── */
+  .slider-wrap { max-width: 28rem; padding: 0.5rem 0; }
+  .slider-track {
+    position: relative; height: 6px; background: var(--border);
+    border-radius: 3px; margin: 1.2rem 0 0.6rem;
+  }
+  .slider-track input[type="range"] {
+    -webkit-appearance: none; appearance: none;
+    position: absolute; top: -10px; left: 0; width: 100%;
+    height: 26px; background: transparent; margin: 0; cursor: pointer;
+  }
+  .slider-track input[type="range"]::-webkit-slider-runnable-track {
+    height: 6px; background: transparent;
+  }
+  .slider-track input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 24px; height: 24px; border-radius: 50%;
+    background: var(--primary); border: 3px solid #fff;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+    margin-top: -9px; cursor: grab;
+    transition: box-shadow 0.15s;
+  }
+  .slider-track input[type="range"]::-webkit-slider-thumb:active {
+    cursor: grabbing; box-shadow: 0 0 0 4px rgba(59,130,246,0.2);
+  }
+  .slider-track input[type="range"]::-moz-range-thumb {
+    width: 24px; height: 24px; border-radius: 50%;
+    background: var(--primary); border: 3px solid #fff;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.25); cursor: grab;
+  }
+  .slider-track input[type="range"]::-moz-range-track {
+    height: 6px; background: transparent; border: none;
+  }
+  .slider-fill {
+    position: absolute; top: 0; left: 0; height: 100%;
+    background: var(--primary); border-radius: 3px;
+    pointer-events: none; transition: width 0.05s;
+  }
+  .slider-ticks {
+    display: flex; justify-content: space-between;
+    padding: 0 2px; margin-top: 0.15rem;
+  }
+  .slider-ticks span {
+    font-size: 0.72em; color: var(--text-muted); font-family: var(--monospace);
+    width: 0; text-align: center; position: relative;
+  }
+  .slider-ticks span:first-child { text-align: left; }
+  .slider-ticks span:last-child { text-align: right; }
+  .slider-labels {
+    display: flex; justify-content: space-between;
+    font-size: 0.82em; color: var(--text-muted); margin-top: 0.1rem;
+  }
+  .slider-value-badge {
+    display: inline-block; text-align: center; font-weight: 700;
+    font-size: 1.1em; color: var(--primary); background: var(--code-bg);
+    padding: 0.15rem 0.75rem; border-radius: 6px; margin-top: 0.35rem;
+    min-width: 2.5rem; font-family: var(--monospace);
+  }
+  .submit-row { display: flex; gap: 0.5rem; align-items: center; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--border); }
+</style>
+{% endblock %}
+
+{% macro render_item(item, answer_lookup, is_readonly, depth, item_meta) %}
+  {% set link_id = item.linkId %}
+  {% set item_type = item.type|default('string') %}
+  {% set meta = item_meta.get(link_id, {}) %}
+
+  {% if item_type == 'display' %}
+    <div class="q-item">
+      <p class="q-display">{{ item.text }}</p>
+    </div>
+
+  {% elif item_type == 'group' %}
+    <div class="q-item">
+      <div class="q-group-title">{{ item.text }}</div>
+      <div class="q-group">
+        {% for child in item.get('item', []) %}
+          {{ render_item(child, answer_lookup, is_readonly, depth + 1, item_meta) }}
+        {% endfor %}
+      </div>
+    </div>
+
+  {% elif item_type == 'choice' %}
+    <div class="q-item">
+      <span class="q-label">
+        {{ item.text }}{% if item.required %}<span class="q-required">*</span>{% endif %}
+        {% if meta.get('code') %}<span class="q-code">[{{ meta.code }}]</span>{% endif %}
+      </span>
+      {% if is_readonly %}
+        {% set saved = answer_lookup.get(link_id, '') %}
+        {% for opt in item.get('answerOption', []) %}
+          {% if opt.valueCoding.code == saved %}
+            <span class="answer-display">{{ opt.valueCoding.display }}</span>
+          {% endif %}
+        {% endfor %}
+        {% if not saved %}<span style="color:var(--text-muted);">—</span>{% endif %}
+      {% else %}
+        {% if meta.get('repeats') %}
+          {# Multiple choice — checkboxes #}
+          <div class="radio-group">
+            {% for opt in item.get('answerOption', []) %}
+              <label class="radio-label">
+                <input type="checkbox" name="item_{{ link_id }}" value="{{ opt.valueCoding.code }}">
+                {{ opt.valueCoding.display }}
+              </label>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="radio-group">
+            {% for opt in item.get('answerOption', []) %}
+              <label class="radio-label">
+                <input type="radio" name="item_{{ link_id }}" value="{{ opt.valueCoding.code }}"
+                       {% if item.required %}required{% endif %}>
+                {{ opt.valueCoding.display }}
+              </label>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endif %}
+    </div>
+
+  {% elif item_type == 'boolean' %}
+    <div class="q-item">
+      <span class="q-label">
+        {{ item.text }}{% if item.required %}<span class="q-required">*</span>{% endif %}
+        {% if meta.get('code') %}<span class="q-code">[{{ meta.code }}]</span>{% endif %}
+      </span>
+      {% if is_readonly %}
+        {% set saved = answer_lookup.get(link_id, '') %}
+        <span class="answer-display">{% if saved == 'true' %}Ja{% elif saved == 'false' %}Nej{% else %}—{% endif %}</span>
+      {% else %}
+        <div class="radio-group">
+          <label class="radio-label"><input type="radio" name="item_{{ link_id }}" value="true" {% if item.required %}required{% endif %}> Ja</label>
+          <label class="radio-label"><input type="radio" name="item_{{ link_id }}" value="false"> Nej</label>
+        </div>
+      {% endif %}
+    </div>
+
+  {% elif item_type == 'text' %}
+    <div class="q-item">
+      <label class="q-label" for="item_{{ link_id }}">
+        {{ item.text }}{% if item.required %}<span class="q-required">*</span>{% endif %}
+        {% if meta.get('code') %}<span class="q-code">[{{ meta.code }}]</span>{% endif %}
+      </label>
+      {% if is_readonly %}
+        <span class="answer-display">{{ answer_lookup.get(link_id, '—') }}</span>
+      {% else %}
+        <textarea id="item_{{ link_id }}" name="item_{{ link_id }}" class="form-control" rows="3"
+                  {% if item.required %}required{% endif %}></textarea>
+      {% endif %}
+    </div>
+
+  {% elif item_type == 'integer' %}
+    <div class="q-item">
+      <label class="q-label" for="item_{{ link_id }}">
+        {{ item.text }}{% if item.required %}<span class="q-required">*</span>{% endif %}
+        {% if meta.get('code') %}<span class="q-code">[{{ meta.code }}]</span>{% endif %}
+      </label>
+      {% if is_readonly %}
+        <span class="answer-display">{{ answer_lookup.get(link_id, '—') }}{% if meta.get('unit') %} {{ meta.unit }}{% endif %}</span>
+      {% elif meta.get('is_slider') or meta.get('anchor_low') or meta.get('anchor_high') %}
+        {# Mechanical slider #}
+        {% set min_val = meta.get('min', 0)|int %}
+        {% set max_val = meta.get('max', 10)|int %}
+        {% set step_val = meta.get('step', 1)|int or 1 %}
+        {% set init_val = ((min_val + max_val) / 2)|int %}
+        <div class="slider-wrap">
+          <div class="slider-track" id="track_{{ link_id }}">
+            <div class="slider-fill" id="fill_{{ link_id }}" style="width:50%;"></div>
+            <input type="range" id="item_{{ link_id }}" name="item_{{ link_id }}"
+                   min="{{ min_val }}" max="{{ max_val }}" step="{{ step_val }}"
+                   value="{{ init_val }}"
+                   oninput="updateSlider('{{ link_id }}',this.value,{{ min_val }},{{ max_val }})"
+                   {% if item.required %}required{% endif %}>
+          </div>
+          {% set tick_count = ((max_val - min_val) / step_val)|int %}
+          {% if tick_count <= 20 %}
+          <div class="slider-ticks">
+            {% for i in range(min_val, max_val + 1, step_val) %}
+              <span>{{ i }}</span>
+            {% endfor %}
+          </div>
+          {% endif %}
+          {% if meta.get('anchor_low') or meta.get('anchor_high') %}
+          <div class="slider-labels">
+            <span>{{ meta.get('anchor_low', '') }}</span>
+            <span>{{ meta.get('anchor_high', '') }}</span>
+          </div>
+          {% endif %}
+          <div class="slider-value-badge" id="val_{{ link_id }}">{{ init_val }}</div>
+          {% if meta.get('unit') %}<span class="q-hint">{{ meta.unit }}</span>{% endif %}
+        </div>
+      {% else %}
+        {# Standard number input #}
+        <div class="input-with-unit">
+          <input type="number" id="item_{{ link_id }}" name="item_{{ link_id }}" class="form-control"
+                 step="1"
+                 {% if meta.get('min') is not none %}min="{{ meta.min }}"{% endif %}
+                 {% if meta.get('max') is not none %}max="{{ meta.max }}"{% endif %}
+                 {% if item.required %}required{% endif %}>
+          {% if meta.get('unit') %}<span class="unit-suffix">{{ meta.unit }}</span>{% endif %}
+        </div>
+        {% if meta.get('min') is not none and meta.get('max') is not none %}
+          <span class="q-hint">Intervall: {{ meta.min }}–{{ meta.max }}{% if meta.get('unit') %} {{ meta.unit }}{% endif %}</span>
+        {% endif %}
+      {% endif %}
+    </div>
+
+  {% elif item_type == 'decimal' %}
+    <div class="q-item">
+      <label class="q-label" for="item_{{ link_id }}">
+        {{ item.text }}{% if item.required %}<span class="q-required">*</span>{% endif %}
+        {% if meta.get('code') %}<span class="q-code">[{{ meta.code }}]</span>{% endif %}
+      </label>
+      {% if is_readonly %}
+        <span class="answer-display">{{ answer_lookup.get(link_id, '—') }}{% if meta.get('unit') %} {{ meta.unit }}{% endif %}</span>
+      {% else %}
+        <div class="input-with-unit">
+          <input type="number" id="item_{{ link_id }}" name="item_{{ link_id }}" class="form-control"
+                 step="any"
+                 {% if meta.get('min') is not none %}min="{{ meta.min }}"{% endif %}
+                 {% if meta.get('max') is not none %}max="{{ meta.max }}"{% endif %}
+                 {% if item.required %}required{% endif %}>
+          {% if meta.get('unit') %}<span class="unit-suffix">{{ meta.unit }}</span>{% endif %}
+        </div>
+        {% if meta.get('min') is not none and meta.get('max') is not none %}
+          <span class="q-hint">Intervall: {{ meta.min }}–{{ meta.max }}{% if meta.get('unit') %} {{ meta.unit }}{% endif %}</span>
+        {% endif %}
+      {% endif %}
+    </div>
+
+  {% elif item_type == 'date' %}
+    <div class="q-item">
+      <label class="q-label" for="item_{{ link_id }}">
+        {{ item.text }}{% if item.required %}<span class="q-required">*</span>{% endif %}
+        {% if meta.get('code') %}<span class="q-code">[{{ meta.code }}]</span>{% endif %}
+      </label>
+      {% if is_readonly %}
+        <span class="answer-display">{{ answer_lookup.get(link_id, '—') }}</span>
+      {% else %}
+        <input type="date" id="item_{{ link_id }}" name="item_{{ link_id }}" class="form-control"
+               style="max-width:12rem;" {% if item.required %}required{% endif %}>
+      {% endif %}
+    </div>
+
+  {% elif item_type == 'dateTime' %}
+    <div class="q-item">
+      <label class="q-label" for="item_{{ link_id }}">
+        {{ item.text }}{% if item.required %}<span class="q-required">*</span>{% endif %}
+        {% if meta.get('code') %}<span class="q-code">[{{ meta.code }}]</span>{% endif %}
+      </label>
+      {% if is_readonly %}
+        <span class="answer-display">{{ answer_lookup.get(link_id, '—') }}</span>
+      {% else %}
+        <input type="datetime-local" id="item_{{ link_id }}" name="item_{{ link_id }}" class="form-control"
+               style="max-width:16rem;" {% if item.required %}required{% endif %}>
+      {% endif %}
+    </div>
+
+  {% else %}
+    {# string and fallback #}
+    <div class="q-item">
+      <label class="q-label" for="item_{{ link_id }}">
+        {{ item.text }}{% if item.required %}<span class="q-required">*</span>{% endif %}
+        {% if meta.get('code') %}<span class="q-code">[{{ meta.code }}]</span>{% endif %}
+      </label>
+      {% if is_readonly %}
+        <span class="answer-display">{{ answer_lookup.get(link_id, '—') }}</span>
+      {% else %}
+        <input type="text" id="item_{{ link_id }}" name="item_{{ link_id }}" class="form-control"
+               {% if item.required %}required{% endif %}>
+      {% endif %}
+    </div>
+  {% endif %}
+{% endmacro %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="q-title">{{ questionnaire.get('title', 'Questionnaire') }}</h1>
+    <div class="q-meta">
+      {% if assignment.status == 'completed' %}
+        <span class="badge badge-approved">Completed</span>
+      {% elif assignment.status == 'opened' %}
+        <span class="badge badge-endorsed">Opened</span>
+      {% elif assignment.status == 'expired' %}
+        <span class="badge badge-rejected">Expired</span>
+      {% elif assignment.status == 'cancelled' %}
+        <span class="badge badge-rejected">Cancelled</span>
+      {% endif %}
+      &nbsp; Patient: <code>{{ assignment.patient_guid[:12] }}…</code>
+      &nbsp; Form: <code>{{ assignment.form_guid[:12] }}…</code> v{{ assignment.form_version }}
+      {% if assignment.completed_at %}
+        &nbsp; Completed: {{ assignment.completed_at.strftime('%Y-%m-%d %H:%M') }}
+      {% endif %}
+    </div>
+  </div>
+  <a href="{{ url_for('admin.assignments_list') }}" class="btn btn-secondary btn-sm">Back to list</a>
+</div>
+
+<div class="card q-card">
+  {% if questionnaire.get('description') %}
+    <p class="q-description">{{ questionnaire.description }}</p>
+  {% endif %}
+
+  {% if is_readonly %}
+    {% for item in items %}
+      {{ render_item(item, answer_lookup, true, 0, item_meta) }}
+    {% endfor %}
+
+    {% if response %}
+    <div style="margin-top:1.25rem;padding-top:1rem;border-top:1px solid var(--border);">
+      <details>
+        <summary style="font-weight:600;font-size:0.92em;cursor:pointer;">FHIR QuestionnaireResponse JSON</summary>
+        <pre style="background:var(--code-bg);padding:0.5rem;border-radius:5px;font-size:0.85em;margin-top:0.5rem;overflow-x:auto;">{{ response.fhir_json|tojson(indent=2) }}</pre>
+      </details>
+    </div>
+    {% endif %}
+
+  {% else %}
+    <form method="post" action="{{ url_for('admin.assignment_submit', guid=assignment.assignment_guid) }}">
+      {% for item in items %}
+        {{ render_item(item, answer_lookup, false, 0, item_meta) }}
+      {% endfor %}
+
+      <div class="submit-row">
+        <button type="submit" class="btn btn-primary">Submit response</button>
+        <a href="{{ url_for('admin.assignments_list') }}" class="btn btn-secondary">Cancel</a>
+      </div>
+    </form>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function updateSlider(id, val, min, max) {
+  document.getElementById('val_' + id).textContent = val;
+  var pct = ((val - min) / (max - min)) * 100;
+  document.getElementById('fill_' + id).style.width = pct + '%';
+}
+document.querySelectorAll('.slider-track input[type="range"]').forEach(function(el) {
+  var min = parseFloat(el.min), max = parseFloat(el.max);
+  var pct = ((el.value - min) / (max - min)) * 100;
+  el.closest('.slider-track').querySelector('.slider-fill').style.width = pct + '%';
+});
+</script>
+{% endblock %}

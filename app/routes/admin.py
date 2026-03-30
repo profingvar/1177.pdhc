@@ -241,7 +241,7 @@ def _extract_item_meta(items):
             continue
 
         m = {}
-        # FHIR extensions — units, min/max, anchors
+        # FHIR extensions — units, min/max, anchors, itemControl
         for ext in item.get('extension', []):
             url = ext.get('url', '')
             if url.endswith('/questionnaire-unit'):
@@ -250,13 +250,19 @@ def _extract_item_meta(items):
             elif url.endswith('/minValue'):
                 m['min'] = ext.get('valueDecimal') or ext.get('valueInteger')
             elif url.endswith('/maxValue'):
-                # Anchor high text is stored with valueString on maxValue URL
                 if 'valueString' in ext:
                     m['anchor_high'] = ext['valueString']
                 else:
                     m['max'] = ext.get('valueDecimal') or ext.get('valueInteger')
             elif url.endswith('/questionnaire-sliderStepValue'):
-                m['anchor_low'] = ext.get('valueString') or ''
+                m['step'] = ext.get('valueInteger') or ext.get('valueDecimal')
+                if ext.get('valueString'):
+                    m['anchor_low'] = ext['valueString']
+            elif url.endswith('/questionnaire-itemControl'):
+                vcc = ext.get('valueCodeableConcept', {})
+                for coding in vcc.get('coding', []):
+                    if coding.get('code') == 'slider':
+                        m['is_slider'] = True
 
         # Code reference (canonical concept)
         codes = item.get('code', [])

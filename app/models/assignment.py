@@ -24,6 +24,12 @@ class Assignment(db.Model):
     # Where from: traceability back to request.pdhc.se
     request_guid = db.Column(db.String(36), nullable=True, index=True)
 
+    # Auth context for submitting responses back to gateway.pdhc
+    grant_token = db.Column(db.String(128), nullable=True)
+    contract_guid = db.Column(db.String(36), nullable=True, index=True)
+    organisation_guid = db.Column(db.String(36), nullable=True, index=True)
+    grant_expires_at = db.Column(db.DateTime, nullable=True)
+
     # Lifecycle: pending | opened | completed | expired | cancelled
     status = db.Column(db.String(20), nullable=False, default='pending')
     assigned_at = db.Column(
@@ -36,6 +42,9 @@ class Assignment(db.Model):
     # Link to response once submitted
     response_guid = db.Column(db.String(36), nullable=True)
 
+    # Archive flag
+    archived = db.Column(db.Boolean, default=False, nullable=False, server_default='0')
+
     def to_dict(self):
         return {
             'assignment_guid': self.assignment_guid,
@@ -44,6 +53,9 @@ class Assignment(db.Model):
             'form_version': self.form_version,
             'questionnaire_fhir': self.questionnaire_fhir,
             'request_guid': self.request_guid,
+            'contract_guid': self.contract_guid,
+            'organisation_guid': self.organisation_guid,
+            'grant_expires_at': self.grant_expires_at.isoformat() if self.grant_expires_at else None,
             'status': self.status,
             'assigned_at': self.assigned_at.isoformat() if self.assigned_at else None,
             'expires_at': self.expires_at.isoformat() if self.expires_at else None,

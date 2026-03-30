@@ -25,6 +25,40 @@ def create_app(config_class=Config):
     app.register_blueprint(assignments_bp, url_prefix='/api/assignments')
     app.register_blueprint(webhook_bp, url_prefix='/api/webhook')
 
+    @app.cli.command('migrate-assignments')
+    def migrate_assignments():
+        """Add grant auth columns to assignments table (run once after deploy)."""
+        import sqlalchemy
+        cols = [
+            'ALTER TABLE assignments ADD COLUMN IF NOT EXISTS grant_token VARCHAR(128)',
+            'ALTER TABLE assignments ADD COLUMN IF NOT EXISTS contract_guid VARCHAR(36)',
+            'ALTER TABLE assignments ADD COLUMN IF NOT EXISTS organisation_guid VARCHAR(36)',
+            'ALTER TABLE assignments ADD COLUMN IF NOT EXISTS grant_expires_at TIMESTAMP WITH TIME ZONE',
+        ]
+        with db.engine.connect() as conn:
+            for sql in cols:
+                try:
+                    conn.execute(sqlalchemy.text(sql))
+                    print(f'OK: {sql}')
+                except Exception as e:
+                    print(f'SKIP ({e}): {sql}')
+            conn.commit()
+        print('Migration complete.')
+
+    @app.cli.command('migrate-archived')
+    def migrate_archived():
+        """Add archived column to assignments table."""
+        import sqlalchemy
+        sql = 'ALTER TABLE assignments ADD COLUMN IF NOT EXISTS archived BOOLEAN NOT NULL DEFAULT FALSE'
+        with db.engine.connect() as conn:
+            try:
+                conn.execute(sqlalchemy.text(sql))
+                print(f'OK: {sql}')
+            except Exception as e:
+                print(f'SKIP ({e}): {sql}')
+            conn.commit()
+        print('Migration complete.')
+
     @app.errorhandler(400)
     def bad_request(e):
         return jsonify(error="Bad Request", message=str(e.description), code=400), 400

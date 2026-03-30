@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}Assignments — 1177 Forms{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Assignments</h1>
+    <p class="lead">Questionnaire assignments by status</p>
+  </div>
+</div>
+
+<div class="card mb-2" style="display:flex;gap:0.4rem;align-items:center;padding:0.5rem 1rem;">
+  <a href="{{ url_for('admin.assignments_list', show_all=show_all or '') }}"
+     class="btn btn-sm {% if not status_filter %}btn-primary{% else %}btn-secondary{% endif %}">All</a>
+  <a href="{{ url_for('admin.assignments_list', status='pending', show_all=show_all or '') }}"
+     class="btn btn-sm {% if status_filter == 'pending' %}btn-primary{% else %}btn-secondary{% endif %}">Pending</a>
+  <a href="{{ url_for('admin.assignments_list', status='opened', show_all=show_all or '') }}"
+     class="btn btn-sm {% if status_filter == 'opened' %}btn-primary{% else %}btn-secondary{% endif %}">Opened</a>
+  <a href="{{ url_for('admin.assignments_list', status='completed', show_all=show_all or '') }}"
+     class="btn btn-sm {% if status_filter == 'completed' %}btn-primary{% else %}btn-secondary{% endif %}">Completed</a>
+  <a href="{{ url_for('admin.assignments_list', status='expired', show_all=show_all or '') }}"
+     class="btn btn-sm {% if status_filter == 'expired' %}btn-primary{% else %}btn-secondary{% endif %}">Expired</a>
+  <a href="{{ url_for('admin.assignments_list', status='cancelled', show_all=show_all or '') }}"
+     class="btn btn-sm {% if status_filter == 'cancelled' %}btn-primary{% else %}btn-secondary{% endif %}">Cancelled</a>
+  <span style="margin-left:auto;">
+    {% if show_all %}
+    <a href="{{ url_for('admin.assignments_list', status=status_filter) }}" class="btn btn-secondary btn-sm">Hide Archived</a>
+    {% else %}
+    <a href="{{ url_for('admin.assignments_list', status=status_filter, show_all='1') }}" class="btn btn-secondary btn-sm"><i data-lucide="archive"></i> Show All</a>
+    {% endif %}
+  </span>
+</div>
+
+{% if assignments %}
+<div class="card">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Assignment GUID</th>
+          <th>Patient</th>
+          <th>Form</th>
+          <th>Status</th>
+          <th>Assigned</th>
+          <th>Expires</th>
+          <th>Completed</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in assignments %}
+        <tr{% if a.archived %} style="opacity: 0.5;"{% endif %}>
+          <td class="monospace"><a href="{{ url_for('admin.assignment_detail', guid=a.assignment_guid) }}">{{ a.assignment_guid[:12] }}…</a></td>
+          <td class="monospace">{{ a.patient_guid[:12] }}…</td>
+          <td class="monospace">{{ a.form_guid[:12] }}… <span style="color:var(--text-muted);">v{{ a.form_version }}</span></td>
+          <td>
+            {% if a.status == 'pending' %}
+              <span class="badge badge-pending">Pending</span>
+            {% elif a.status == 'opened' %}
+              <span class="badge badge-endorsed">Opened</span>
+            {% elif a.status == 'completed' %}
+              <span class="badge badge-approved">Completed</span>
+            {% elif a.status == 'expired' %}
+              <span class="badge badge-rejected">Expired</span>
+            {% elif a.status == 'cancelled' %}
+              <span class="badge badge-rejected">Cancelled</span>
+            {% else %}
+              <span class="badge badge-pending">{{ a.status }}</span>
+            {% endif %}
+          </td>
+          <td class="monospace">{{ a.assigned_at.strftime('%Y-%m-%d %H:%M') if a.assigned_at else '—' }}</td>
+          <td class="monospace">{{ a.expires_at.strftime('%Y-%m-%d %H:%M') if a.expires_at else '—' }}</td>
+          <td class="monospace">{{ a.completed_at.strftime('%Y-%m-%d %H:%M') if a.completed_at else '—' }}</td>
+          <td>
+            <form method="post" action="{{ url_for('admin.archive_assignment', guid=a.assignment_guid) }}" style="display:inline;">
+              <button type="submit" class="btn btn-secondary btn-sm" title="{{ 'Unarchive' if a.archived else 'Archive' }}">
+                <i data-lucide="{{ 'archive-restore' if a.archived else 'archive' }}"></i>
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if pagination.pages > 1 %}
+  <ul class="pagination">
+    {% if pagination.has_prev %}
+      <li><a href="{{ url_for('admin.assignments_list', page=pagination.prev_num, status=status_filter) }}">Prev</a></li>
+    {% endif %}
+    {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+      {% if p %}
+        {% if p == pagination.page %}
+          <li><span class="active">{{ p }}</span></li>
+        {% else %}
+          <li><a href="{{ url_for('admin.assignments_list', page=p, status=status_filter) }}">{{ p }}</a></li>
+        {% endif %}
+      {% else %}
+        <li><span>…</span></li>
+      {% endif %}
+    {% endfor %}
+    {% if pagination.has_next %}
+      <li><a href="{{ url_for('admin.assignments_list', page=pagination.next_num, status=status_filter) }}">Next</a></li>
+    {% endif %}
+  </ul>
+  {% endif %}
+</div>
+{% else %}
+<div class="card">
+  <div class="empty-state">
+    <p>No assignments{% if status_filter %} with status <code>{{ status_filter }}</code>{% endif %}.</p>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

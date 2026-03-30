@@ -193,7 +193,7 @@ def assignment_submit(guid):
 
 def _dispatch_to_gateway(assignment, fhir_qr):
     """Fire-and-forget dispatch of a QuestionnaireResponse to gateway.pdhc."""
-    if not (assignment.grant_token and assignment.contract_guid
+    if not (assignment.grant_token
             and assignment.organisation_guid and assignment.request_guid):
         return  # Auth context not available — push not configured for this assignment
 
@@ -205,7 +205,7 @@ def _dispatch_to_gateway(assignment, fhir_qr):
 
     report_body = {
         'patient_guid': assignment.patient_guid,
-        'contract_guid': assignment.contract_guid,
+        'contract_guid': assignment.contract_guid or '',
         'organisation_guid': assignment.organisation_guid,
         'grant_token': assignment.grant_token,
         'expires_at': assignment.grant_expires_at.isoformat() if assignment.grant_expires_at else None,

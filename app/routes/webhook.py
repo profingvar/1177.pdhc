@@ -35,6 +35,23 @@ def inbound():
     if not data:
         abort(400, description='JSON body required')
 
+    # Unwrap Bundle → extract the ServiceRequest entry and delivery meta tags
+    bundle_tags = {}
+    if data.get('resourceType') == 'Bundle':
+        for tag in data.get('meta', {}).get('tag', []):
+            if tag.get('system') == 'https://pdhc.se/delivery':
+                bundle_tags[tag['code']] = tag.get('display', '')
+
+        sr_resource = None
+        for entry in data.get('entry', []):
+            res = entry.get('resource', entry)
+            if res.get('resourceType') == 'ServiceRequest':
+                sr_resource = res
+                break
+        if not sr_resource:
+            abort(400, description='Bundle must contain a ServiceRequest resource')
+        data = sr_resource
+
     if data.get('resourceType') != 'ServiceRequest':
         abort(400, description='resourceType must be "ServiceRequest"')
 
@@ -64,13 +81,26 @@ def inbound():
     # --- Extract metadata ---
     request_guid = data.get('id')
 
+    # Parse grant_expires_at from bundle tags
+    grant_expires_at = None
+    expires_at_str = bundle_tags.get('expires_at', '')
+    if expires_at_str:
+        try:
+            from datetime import datetime, timezone
+            grant_expires_at = datetime.fromisoformat(expires_at_str.replace('Z', '+00:00'))
+        except (ValueError, TypeError):
+            pass
+
     # --- Create one assignment per Questionnaire ---
     created = []
     for q in questionnaires:
-        form_guid = q.get('id')
+        form_guid = q.get('id', '')
         if not form_guid:
             logger.warning('Skipping Questionnaire without id in ServiceRequest %s', request_guid)
             continue
+        # Strip fhir_builder prefix (e.g. "questionnaire-<uuid>" → "<uuid>")
+        if form_guid.startswith('questionnaire-'):
+            form_guid = form_guid[len('questionnaire-'):]
 
         form_version_str = q.get('version', '1')
         try:
@@ -84,6 +114,10 @@ def inbound():
             form_version=form_version,
             questionnaire_fhir=q,
             request_guid=request_guid,
+            grant_token=bundle_tags.get('grant_token', '') or None,
+            contract_guid=bundle_tags.get('contract_guid', '') or None,
+            organisation_guid=bundle_tags.get('organisation_guid', '') or None,
+            grant_expires_at=grant_expires_at,
         )
         db.session.add(assignment)
         created.append(assignment)

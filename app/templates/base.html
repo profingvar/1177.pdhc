@@ -16,13 +16,20 @@
       <a class="brand" href="{{ url_for('admin.dashboard') }}">1177 Forms</a>
     </div>
     <ul class="nav-links">
-      {% if session.get('user') %}
+      {% if session.get('keyauth_user') %}
       <li><a href="{{ url_for('admin.dashboard') }}" {% if request.endpoint == 'admin.dashboard' %}class="active"{% endif %}>Dashboard</a></li>
+      <li><a href="{{ url_for('admin.assignments_list') }}" {% if request.endpoint == 'admin.assignments_list' %}class="active"{% endif %}>Assignments</a></li>
+      {% if session['keyauth_user'].get('role') == 'admin' %}
+      <li><a href="{{ url_for('keyauth.users_list') }}" {% if 'keyauth.' in (request.endpoint or '') %}class="active"{% endif %}>Users</a></li>
+      {% endif %}
+      {% set settings_active = request.endpoint in ('admin.settings','admin.api_keys_list','admin.cleanup') %}
+      <li><a href="{{ url_for('admin.settings') }}" {% if settings_active %}class="active"{% endif %}>Settings</a></li>
+      <li><a href="{{ url_for('docs.docs_index') }}" {% if request.blueprint == 'docs' %}class="active"{% endif %}>Docs</a></li>
       <li class="nav-separator"></li>
-      <li><span style="opacity:0.7; font-size:11px;">{{ session['user'].get('username', '') }}</span></li>
-      <li><a href="{{ url_for('auth.logout') }}">Logout</a></li>
+      <li><span style="opacity:0.7; font-size:11px;">{{ session['keyauth_user'].get('username', '') }}</span></li>
+      <li><a href="{{ url_for('keyauth.logout') }}">Logout</a></li>
       {% else %}
-      <li><a href="{{ url_for('auth.login') }}">Login</a></li>
+      <li><a href="{{ url_for('keyauth.login') }}">Login</a></li>
       {% endif %}
     </ul>
   </nav>

@@ -68,9 +68,9 @@
               <span class="badge badge-pending">{{ a.status }}</span>
             {% endif %}
           </td>
-          <td class="monospace">{{ a.assigned_at.strftime('%Y-%m-%d %H:%M') if a.assigned_at else '—' }}</td>
-          <td class="monospace">{{ a.expires_at.strftime('%Y-%m-%d %H:%M') if a.expires_at else '—' }}</td>
-          <td class="monospace">{{ a.completed_at.strftime('%Y-%m-%d %H:%M') if a.completed_at else '—' }}</td>
+          <td class="monospace">{{ a.assigned_at|local if a.assigned_at else '—' }}</td>
+          <td class="monospace">{{ a.expires_at|local if a.expires_at else '—' }}</td>
+          <td class="monospace">{{ a.completed_at|local if a.completed_at else '—' }}</td>
           <td>
             <form method="post" action="{{ url_for('admin.archive_assignment', guid=a.assignment_guid) }}" style="display:inline;">
               <button type="submit" class="btn btn-secondary btn-sm" title="{{ 'Unarchive' if a.archived else 'Archive' }}">

@@ -1,5 +1,6 @@
 venv/
 .env
+.env.bak.*
 __pycache__/
 *.pyc
 results/
@@ -8,3 +9,20 @@ results/
 *.egg-info/
 db_backups/
 gunicorn.pid
+gunicorn_err.log
+logs/
+
+# OS / editor junk
+.DS_Store
+
+# Local backup files left by ad-hoc patches (cp -p, perl -i, etc.)
+*.bak
+*.bak2
+*.bak.*
+
+# Local dev symlinks not meant for the repo
+pdhc_keyauth
+
+# Local working notes
+tickets_1177.txt
+changed_files.md

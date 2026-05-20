@@ -10,29 +10,29 @@
 </div>
 
 <div class="dash-grid">
-  <div class="dash-card">
+  <a href="{{ url_for('admin.assignments_list', status='pending') }}" class="dash-card">
     <i data-lucide="clock"></i>
     <div class="count">{{ pending }}</div>
     <h2>Pending</h2>
     <p>Awaiting patient</p>
-  </div>
-  <div class="dash-card">
+  </a>
+  <a href="{{ url_for('admin.assignments_list', status='opened') }}" class="dash-card">
     <i data-lucide="eye"></i>
     <div class="count">{{ opened }}</div>
     <h2>Opened</h2>
     <p>In progress</p>
-  </div>
-  <div class="dash-card">
+  </a>
+  <a href="{{ url_for('admin.assignments_list', status='completed') }}" class="dash-card">
     <i data-lucide="check-circle"></i>
     <div class="count">{{ completed }}</div>
     <h2>Completed</h2>
     <p>Submitted</p>
-  </div>
-  <div class="dash-card">
+  </a>
+  <a href="{{ url_for('admin.assignments_list') }}" class="dash-card">
     <i data-lucide="inbox"></i>
     <div class="count">{{ total_responses }}</div>
     <h2>Responses</h2>
     <p>Total collected</p>
-  </div>
+  </a>
 </div>
 {% endblock %}

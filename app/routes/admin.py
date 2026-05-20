@@ -4,10 +4,9 @@ from datetime import datetime, timezone
 from flask import Blueprint, render_template, request as flask_request, redirect, url_for, flash, current_app, session
 import requests as http_requests
 from app import db
-from app.routes.auth import login_required
+from pdhc_keyauth import login_required
 from app.models.assignment import Assignment
 from app.models.questionnaire_response import QuestionnaireResponse
-from app.models.user import User
 from app.models.api_key import ApiKey
 from sqlalchemy import func
 
@@ -18,7 +17,7 @@ admin_bp = Blueprint('admin', __name__)
 
 @admin_bp.route('/')
 def index():
-    return render_template('login.html')
+    return redirect(url_for('keyauth.login'))
 
 
 @admin_bp.route('/dashboard')
@@ -193,8 +192,7 @@ def assignment_submit(guid):
 
 def _dispatch_to_gateway(assignment, fhir_qr):
     """Fire-and-forget dispatch of a QuestionnaireResponse to gateway.pdhc."""
-    if not (assignment.grant_token
-            and assignment.organisation_guid and assignment.request_guid):
+    if not (assignment.grant_token and assignment.request_guid):
         return  # Auth context not available — push not configured for this assignment
 
     gateway_url = current_app.config.get('GATEWAY_URL', '').rstrip('/')
@@ -203,12 +201,11 @@ def _dispatch_to_gateway(assignment, fhir_qr):
         logger.warning('GATEWAY_URL or GATEWAY_PROVIDER_TOKEN not configured — skipping dispatch')
         return
 
+    # Minimal payload — gateway derives org_guid from PAT, contract_guid from grant
     report_body = {
         'patient_guid': assignment.patient_guid,
-        'contract_guid': assignment.contract_guid or '',
-        'organisation_guid': assignment.organisation_guid,
         'grant_token': assignment.grant_token,
-        'expires_at': assignment.grant_expires_at.isoformat() if assignment.grant_expires_at else None,
+        'status': 'completed',
         'report_payload': fhir_qr,
     }
     try:
@@ -363,116 +360,7 @@ def settings():
 
 
 # ---------------------------------------------------------------------------
-# User management
-# ---------------------------------------------------------------------------
-
-@admin_bp.route('/settings/users')
-@login_required
-def users_list():
-    users = User.query.order_by(User.created_at).all()
-    return render_template('users.html', users=users)
-
-
-@admin_bp.route('/settings/users/create', methods=['POST'])
-@login_required
-def user_create():
-    username = flask_request.form.get('username', '').strip()
-    password = flask_request.form.get('password', '')
-    confirm  = flask_request.form.get('confirm', '')
-    role     = flask_request.form.get('role', 'admin')
-
-    if not username or not password:
-        flash('Username and password are required.', 'error')
-        return redirect(url_for('admin.users_list'))
-    if password != confirm:
-        flash('Passwords do not match.', 'error')
-        return redirect(url_for('admin.users_list'))
-    if len(password) < 8:
-        flash('Password must be at least 8 characters.', 'error')
-        return redirect(url_for('admin.users_list'))
-    if User.query.filter_by(username=username).first():
-        flash(f'Username "{username}" already exists.', 'error')
-        return redirect(url_for('admin.users_list'))
-
-    user = User(username=username, role=role)
-    user.set_password(password)
-    db.session.add(user)
-    db.session.commit()
-    flash(f'User "{username}" created.', 'success')
-    return redirect(url_for('admin.users_list'))
-
-
-@admin_bp.route('/settings/users/<int:user_id>/set-password', methods=['POST'])
-@login_required
-def user_set_password(user_id):
-    user = User.query.get_or_404(user_id)
-    password = flask_request.form.get('password', '')
-    confirm  = flask_request.form.get('confirm', '')
-
-    if not password:
-        flash('Password is required.', 'error')
-    elif password != confirm:
-        flash('Passwords do not match.', 'error')
-    elif len(password) < 8:
-        flash('Password must be at least 8 characters.', 'error')
-    else:
-        user.set_password(password)
-        db.session.commit()
-        # If changing own password, force re-login
-        if session.get('user', {}).get('username') == user.username:
-            session.pop('user', None)
-            flash('Password updated. Please log in again.', 'success')
-            return redirect(url_for('auth.login'))
-        flash(f'Password updated for "{user.username}".', 'success')
-    return redirect(url_for('admin.users_list'))
-
-
-@admin_bp.route('/settings/users/<int:user_id>/delete', methods=['POST'])
-@login_required
-def user_delete(user_id):
-    user = User.query.get_or_404(user_id)
-    if session.get('user', {}).get('username') == user.username:
-        flash('You cannot delete your own account.', 'error')
-        return redirect(url_for('admin.users_list'))
-    if User.query.count() <= 1:
-        flash('Cannot delete the last admin account.', 'error')
-        return redirect(url_for('admin.users_list'))
-    username = user.username
-    db.session.delete(user)
-    db.session.commit()
-    flash(f'User "{username}" deleted.', 'success')
-    return redirect(url_for('admin.users_list'))
-
-
-@admin_bp.route('/settings/change-password', methods=['POST'])
-@login_required
-def change_own_password():
-    """Change the currently logged-in user's password."""
-    current  = flask_request.form.get('current_password', '')
-    password = flask_request.form.get('password', '')
-    confirm  = flask_request.form.get('confirm', '')
-    next_url = flask_request.form.get('next', url_for('admin.settings'))
-
-    me = User.query.filter_by(username=session['user']['username']).first()
-    if not me or not me.check_password(current):
-        flash('Current password is incorrect.', 'error')
-        return redirect(next_url)
-    if password != confirm:
-        flash('New passwords do not match.', 'error')
-        return redirect(next_url)
-    if len(password) < 8:
-        flash('Password must be at least 8 characters.', 'error')
-        return redirect(next_url)
-
-    me.set_password(password)
-    db.session.commit()
-    session.pop('user', None)
-    flash('Password changed. Please log in again.', 'success')
-    return redirect(url_for('auth.login'))
-
-
-# ---------------------------------------------------------------------------
-# API key management
+# Webhook API key management (service-to-service, separate from user keys)
 # ---------------------------------------------------------------------------
 
 @admin_bp.route('/settings/api-keys')
@@ -494,7 +382,7 @@ def api_key_create():
     key_obj, raw_key = ApiKey.create(
         name=name,
         scope=scope,
-        created_by=session.get('user', {}).get('username'),
+        created_by=session.get('keyauth_user', {}).get('username'),
     )
     db.session.add(key_obj)
     db.session.commit()

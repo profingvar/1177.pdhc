@@ -4,6 +4,10 @@ set -e
 
 export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 export DOCKER_HOST="${DOCKER_HOST:-unix://$HOME/.colima/default/docker.sock}"
+# macOS ObjC fork-safety: CoreFoundation in parent poisons fork()s; setting
+# this env var before gunicorn prevents the SIGKILL spiral after worker recycles.
+# (Server had this; local had better logging. Merged via ticket #78/75 reconcile.)
+export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
 
 APP_PORT=9036
 DB_PORT=9037
@@ -79,6 +83,11 @@ fi
 # --- 4. Activate venv and start gunicorn ---
 source "$SCRIPT_DIR/venv/bin/activate"
 
+LOG_DIR="$SCRIPT_DIR/logs"
+mkdir -p "$LOG_DIR"
+ERR_LOG="$LOG_DIR/gunicorn.error.log"
+ACC_LOG="$LOG_DIR/gunicorn.access.log"
+
 echo "Starting application on port ${APP_PORT}..."
 cd "$SCRIPT_DIR"
 gunicorn \
@@ -87,11 +96,13 @@ gunicorn \
     --timeout 30 \
     --daemon \
     --pid "$PID_FILE" \
+    --error-logfile "$ERR_LOG" \
+    --access-logfile "$ACC_LOG" \
     "app:create_app()"
 
 # --- 5. Health check ---
 echo "Verifying health..."
-for i in 1 2 3; do
+for i in 1 2 3 4 5; do
     sleep 2
     HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$HEALTH_URL" 2>/dev/null || echo "000")
     if [ "$HTTP_CODE" = "200" ]; then
@@ -102,4 +113,6 @@ for i in 1 2 3; do
 done
 
 echo "ERROR: Health check failed"
+echo "--- last 40 lines of $ERR_LOG ---"
+tail -40 "$ERR_LOG" 2>/dev/null || echo "(no error log)"
 exit 1

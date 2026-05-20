@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Documentation{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Documentation</h1>
+    <p class="lead">Technical manual and API reference for 1177.pdhc</p>
+  </div>
+</div>
+
+<div class="card mb-2">
+  <h2>Downloadable Documents</h2>
+  <table>
+    <thead><tr><th>Document</th><th></th></tr></thead>
+    <tbody>
+      {% for doc in docs %}
+      <tr>
+        <td>{{ doc.title }}</td>
+        <td><a href="{{ url_for('docs.download_doc', filename=doc.filename) }}" class="btn btn-primary btn-sm">Download</a></td>
+      </tr>
+      {% endfor %}
+      {% if not docs %}
+      <tr><td colspan="2" class="text-muted">No downloadable documents.</td></tr>
+      {% endif %}
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>Overview</h2>
+  <p>1177.pdhc is the patient questionnaire assignment service. It receives dispatched ServiceRequests
+     from request.pdhc via webhook, creates assignments per patient, and stores FHIR QuestionnaireResponse
+     resources for completion tracking.</p>
+</div>
+
+<div class="card">
+  <h2>API Endpoints</h2>
+  <h3>Webhook (inbound from request.pdhc)</h3>
+  <table>
+    <thead><tr><th>Method</th><th>Path</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td><code>POST</code></td><td><code>/api/webhook/dispatch</code></td><td>Receive dispatched ServiceRequest</td></tr>
+      <tr><td><code>POST</code></td><td><code>/api/webhook/acknowledge</code></td><td>Acknowledge receipt</td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="mt-2">Assignments</h3>
+  <table>
+    <thead><tr><th>Method</th><th>Path</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td><code>GET</code></td><td><code>/api/assignments</code></td><td>List all assignments</td></tr>
+      <tr><td><code>GET</code></td><td><code>/api/assignments/&lt;id&gt;</code></td><td>Get assignment details</td></tr>
+      <tr><td><code>POST</code></td><td><code>/api/assignments/&lt;id&gt;/complete</code></td><td>Mark assignment as completed</td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="mt-2">Health</h3>
+  <table>
+    <thead><tr><th>Method</th><th>Path</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td><code>GET</code></td><td><code>/api/health</code></td><td>Health check with DB status</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>Admin Features</h2>
+  <ul style="padding-left:1.5rem;">
+    <li><strong>Dashboard</strong> — overview of assignment counts and status</li>
+    <li><strong>Assignments list</strong> — filter, search, and manage assignments</li>
+    <li><strong>API keys</strong> — manage webhook authentication keys</li>
+    <li><strong>Cleanup</strong> — archive old assignments</li>
+    <li><strong>Settings</strong> — service configuration</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h2>Operations</h2>
+  <table>
+    <thead><tr><th>Port</th><th>Service</th></tr></thead>
+    <tbody>
+      <tr><td>9036</td><td>Flask / Gunicorn</td></tr>
+      <tr><td>9037</td><td>PostgreSQL (Docker)</td></tr>
+    </tbody>
+  </table>
+  <p class="mt-2">Start: <code>cd /usr/local/www/1177.pdhc && bash start.sh</code></p>
+</div>
+{% endblock %}

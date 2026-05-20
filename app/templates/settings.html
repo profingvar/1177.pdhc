@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Settings — 1177 Forms{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Settings</h1>
+    <p class="lead">Manage API keys and data</p>
+  </div>
+</div>
+
+<div class="dash-grid" style="grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));">
+  <a href="{{ url_for('keyauth.users_list') }}" class="dash-card">
+    <i data-lucide="users"></i>
+    <h2>Users</h2>
+    <p>Create users, manage keys, view access log</p>
+  </a>
+  <a href="{{ url_for('admin.api_keys_list') }}" class="dash-card">
+    <i data-lucide="key"></i>
+    <h2>Webhook Keys</h2>
+    <p>Issue and revoke webhook access keys</p>
+  </a>
+  <a href="{{ url_for('keyauth.access_log') }}" class="dash-card">
+    <i data-lucide="shield"></i>
+    <h2>Access Log</h2>
+    <p>View login history and data access events</p>
+  </a>
+  <a href="{{ url_for('admin.cleanup') }}" class="dash-card">
+    <i data-lucide="trash-2"></i>
+    <h2>Cleanup</h2>
+    <p>Delete assignments and responses by status</p>
+  </a>
+</div>
+{% endblock %}

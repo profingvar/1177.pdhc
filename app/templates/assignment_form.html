@@ -330,7 +330,7 @@
       &nbsp; Patient: <code>{{ assignment.patient_guid[:12] }}…</code>
       &nbsp; Form: <code>{{ assignment.form_guid[:12] }}…</code> v{{ assignment.form_version }}
       {% if assignment.completed_at %}
-        &nbsp; Completed: {{ assignment.completed_at.strftime('%Y-%m-%d %H:%M') }}
+        &nbsp; Completed: {{ assignment.completed_at|local }}
       {% endif %}
     </div>
   </div>

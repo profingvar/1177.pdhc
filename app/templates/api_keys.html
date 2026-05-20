@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}API Keys — 1177 Forms{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>API Keys</h1>
+    <p class="lead">Keys used in <code>X-API-Key</code> header for webhook and API access</p>
+  </div>
+  <a href="{{ url_for('admin.settings') }}" class="btn btn-secondary">
+    <i data-lucide="arrow-left"></i> Settings
+  </a>
+</div>
+
+<div style="display:grid; grid-template-columns: 2fr 1fr; gap:1.25rem; align-items:start;">
+
+  <!-- Key list -->
+  <div class="card">
+    <h2>Active keys</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Scope</th>
+          <th>Created</th>
+          <th>Created by</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for k in keys %}
+        <tr>
+          <td>{{ k.name }}</td>
+          <td><code>{{ k.scope }}</code></td>
+          <td class="text-muted">{{ k.created_at|local('%Y-%m-%d') if k.created_at else '—' }}</td>
+          <td class="text-muted">{{ k.created_by or '—' }}</td>
+          <td>
+            {% if k.is_active %}
+              <span class="badge badge-success">active</span>
+            {% else %}
+              <span class="badge badge-danger">revoked</span>
+            {% endif %}
+          </td>
+          <td style="display:flex; gap:0.3rem;">
+            {% if k.is_active %}
+            <form method="POST" action="{{ url_for('admin.api_key_revoke', key_id=k.id) }}"
+                  onsubmit="return confirm('Revoke key {{ k.name }}?');">
+              <button type="submit" class="btn btn-sm btn-secondary">Revoke</button>
+            </form>
+            {% endif %}
+            <form method="POST" action="{{ url_for('admin.api_key_delete', key_id=k.id) }}"
+                  onsubmit="return confirm('Permanently delete key {{ k.name }}?');">
+              <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="text-muted">No API keys yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Create key -->
+  <div class="card">
+    <h2>New key</h2>
+    <form method="POST" action="{{ url_for('admin.api_key_create') }}">
+      <div class="form-group">
+        <label>Name / description</label>
+        <input type="text" name="name" class="form-control" required placeholder="e.g. request.pdhc push">
+      </div>
+      <div class="form-group">
+        <label>Scope</label>
+        <select name="scope" class="form-control">
+          <option value="webhook">webhook</option>
+          <option value="read">read</option>
+          <option value="write">write</option>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-success" style="width:100%;">Generate key</button>
+    </form>
+    <p class="text-muted mt-2" style="font-size:0.9em;">The raw key is shown once after creation. Store it immediately.</p>
+  </div>
+
+</div>
+{% endblock %}

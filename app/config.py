@@ -28,6 +28,6 @@ class Config:
     BOOTSTRAP_ADMIN_USER = os.environ.get('BOOTSTRAP_ADMIN_USER', 'admin')
     BOOTSTRAP_ADMIN_PASSWORD = os.environ.get('BOOTSTRAP_ADMIN_PASSWORD', 'change-me-on-first-deploy')
 
-    # Outbound: completed responses dispatched to gatekeeper
-    GATEKEEPER_URL = os.environ.get('GATEKEEPER_URL', 'https://gatekeeper.pdhc.se')
-    GATEKEEPER_TOKEN = os.environ.get('GATEKEEPER_TOKEN', '')
+    # Outbound: completed QuestionnaireResponses dispatched to gateway.pdhc
+    GATEWAY_URL = os.environ.get('GATEWAY_URL', 'https://gateway.pdhc.se')
+    GATEWAY_PROVIDER_TOKEN = os.environ.get('GATEWAY_PROVIDER_TOKEN', '')

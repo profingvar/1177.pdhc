@@ -1,9 +1,23 @@
+from datetime import timezone
+from zoneinfo import ZoneInfo
+
 from flask import Flask, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from app.config import Config
 
 db = SQLAlchemy()
+
+_LOCAL_TZ = ZoneInfo('Europe/Stockholm')
+
+
+def _format_local(value, fmt='%Y-%m-%d %H:%M'):
+    """Jinja filter: UTC datetime -> Europe/Stockholm formatted string."""
+    if value is None:
+        return ''
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    return value.astimezone(_LOCAL_TZ).strftime(fmt)
 
 
 def create_app(config_class=Config):
@@ -13,15 +27,28 @@ def create_app(config_class=Config):
     db.init_app(app)
     CORS(app, origins=app.config.get('ALLOWED_ORIGINS', ['*']))
 
+    app.add_template_filter(_format_local, 'local')
+
     from app.routes.health import health_bp
-    from app.routes.auth import auth_bp
     from app.routes.admin import admin_bp
     from app.routes.assignments import assignments_bp
     from app.routes.webhook import webhook_bp
 
+    from app.routes.docs import docs_bp
+
     app.register_blueprint(health_bp)
-    app.register_blueprint(auth_bp)
     app.register_blueprint(admin_bp)
+    app.register_blueprint(docs_bp)
+
+    # Key-based user authentication
+    app.config.setdefault('KEYAUTH_PORTAL_NAME', '1177 Forms')
+    app.config.setdefault('KEYAUTH_DASHBOARD_ENDPOINT', 'admin.dashboard')
+    app.config.setdefault('KEYAUTH_BOOTSTRAP_USER', app.config.get('BOOTSTRAP_ADMIN_USER', 'admin'))
+    if app.config.get('BOOTSTRAP_ADMIN_PASSWORD'):
+        app.config.setdefault('KEYAUTH_BOOTSTRAP_KEY', app.config['BOOTSTRAP_ADMIN_PASSWORD'])
+
+    from pdhc_keyauth import init_keyauth
+    init_keyauth(app, db)
     app.register_blueprint(assignments_bp, url_prefix='/api/assignments')
     app.register_blueprint(webhook_bp, url_prefix='/api/webhook')
 

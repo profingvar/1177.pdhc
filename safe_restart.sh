@@ -2,6 +2,21 @@
 # Graceful restart of 1177.pdhc application.
 set -e
 
+# Step-tracked failure logging — set -e exits on the first error
+# but says nothing about *what* failed; the trap below logs the
+# step that was active so the operator doesn't have to guess.
+# Ticket #236.
+CURRENT_STEP="(initialising)"
+_on_exit() {
+    rc=$?
+    if [ "$rc" -ne 0 ]; then
+        echo >&2
+        echo "[safe_restart] FAILED at step: ${CURRENT_STEP} (exit $rc)" >&2
+        echo "[safe_restart] Service may be in DEGRADED state — verify gunicorn + DB before walking away." >&2
+    fi
+}
+trap _on_exit EXIT
+
 export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 export DOCKER_HOST="${DOCKER_HOST:-unix://$HOME/.colima/default/docker.sock}"
 # macOS ObjC fork-safety: CoreFoundation in parent poisons fork()s; setting
@@ -21,6 +36,7 @@ HEALTH_URL="http://127.0.0.1:${APP_PORT}/api/health"
 echo "=== 1177.pdhc safe restart — $(date -u +%Y-%m-%dT%H:%M:%SZ) ==="
 
 # --- 1. Database backup ---
+CURRENT_STEP='database backup'
 echo "Backing up database..."
 mkdir -p "$BACKUP_DIR"
 BACKUP_FILE="$BACKUP_DIR/forms_1177_$(date -u +%Y-%m-%dT%H-%M-%SZ).sql.gz"
@@ -49,6 +65,7 @@ if [ "$BACKUP_COUNT" -gt 10 ]; then
 fi
 
 # --- 2. Stop existing gunicorn ---
+CURRENT_STEP='stop existing gunicorn'
 echo "Stopping application on port ${APP_PORT}..."
 if [ -f "$PID_FILE" ]; then
     PID=$(cat "$PID_FILE")
@@ -62,6 +79,7 @@ sleep 1
 lsof -ti :$APP_PORT 2>/dev/null | xargs kill -9 2>/dev/null || true
 
 # --- 3. Ensure database is running ---
+CURRENT_STEP='ensure database is running'
 echo "Checking database..."
 cd "$SCRIPT_DIR"
 if ! docker-compose exec -T db pg_isready -U "$DB_USER" -d forms_1177 >/dev/null 2>&1; then
@@ -81,6 +99,7 @@ if ! docker-compose exec -T db pg_isready -U "$DB_USER" -d forms_1177 >/dev/null
 fi
 
 # --- 4. Activate venv and start gunicorn ---
+CURRENT_STEP='activate venv + start gunicorn'
 source "$SCRIPT_DIR/venv/bin/activate"
 
 LOG_DIR="$SCRIPT_DIR/logs"
@@ -101,6 +120,7 @@ gunicorn \
     "app:create_app()"
 
 # --- 5. Health check ---
+CURRENT_STEP='health check'
 echo "Verifying health..."
 for i in 1 2 3 4 5; do
     sleep 2

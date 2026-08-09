@@ -132,3 +132,13 @@ on `1177.pdhc.se` and proxies to `127.0.0.1:9036`.
 `tests/test_{webhook,routes,models,assignment_form}.py` (~52 passing) —
 webhook bundle parsing, REST + admin routes, models, and the type-aware form
 rendering/submission.
+
+## Port Allocation
+
+All ports bind to `127.0.0.1` (loopback only); external traffic arrives
+via the reverse proxy.
+
+| Port | Service |
+|------|---------|
+| 9036 | Flask application (Gunicorn) |
+| 9037 | PostgreSQL database |

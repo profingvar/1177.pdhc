@@ -2,7 +2,6 @@
 import uuid
 from app.models.assignment import Assignment
 from app.models.questionnaire_response import QuestionnaireResponse
-from app.models.user import User
 from app.models.api_key import ApiKey
 
 
@@ -69,17 +68,6 @@ class TestQuestionnaireResponseModel:
         db.session.commit()
         d = resp.to_dict()
         assert d['assignment_guid'] == 'a1'
-
-
-class TestUserModel:
-
-    def test_create_and_auth(self, db):
-        user = User(username='testuser', role='admin')
-        user.set_password('secret')
-        db.session.add(user)
-        db.session.commit()
-        assert user.check_password('secret')
-        assert not user.check_password('wrong')
 
 
 class TestApiKeyModel:

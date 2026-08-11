@@ -18,17 +18,21 @@ class TestAuth:
         assert resp.status_code == 200
 
     def test_login_success(self, db, client):
-        from app.models.user import User
+        # pdhc_keyauth login takes an api_key (not username/password).
+        from pdhc_keyauth.auth import _get_models
+        User, Key, _Log, kdb = _get_models()
         user = User(username='admin', role='admin')
-        user.set_password('testpass')
-        db.session.add(user)
-        db.session.commit()
+        kdb.session.add(user)
+        kdb.session.commit()
+        key, raw = Key.create(user_guid=user.guid)
+        kdb.session.add(key)
+        kdb.session.commit()
 
-        resp = client.post('/login', data={'username': 'admin', 'password': 'testpass'})
+        resp = client.post('/login', data={'api_key': raw})
         assert resp.status_code == 302  # redirect to dashboard
 
     def test_login_failure(self, db, client):
-        resp = client.post('/login', data={'username': 'bad', 'password': 'bad'})
+        resp = client.post('/login', data={'api_key': 'pdhc_not-a-real-key'})
         assert resp.status_code == 200  # stays on login page
 
     def test_logout(self, logged_in_client):

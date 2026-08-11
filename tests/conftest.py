@@ -46,12 +46,17 @@ def auth_headers():
 
 @pytest.fixture
 def logged_in_client(client, db):
-    """Create admin user and log in."""
-    from app.models.user import User
-    user = User(username='admin', role='admin')
-    user.set_password('testpass')
-    db.session.add(user)
-    db.session.commit()
+    """Create a keyauth admin user and set the session pdhc_keyauth reads.
 
-    client.post('/login', data={'username': 'admin', 'password': 'testpass'})
+    1177's local User model + username/password login were removed; admin auth
+    is now pdhc_keyauth (session['keyauth_user'] → KeyauthUser lookup by guid).
+    """
+    from pdhc_keyauth.auth import _get_models
+    User, _Key, _Log, kdb = _get_models()
+    user = User(username='admin', role='admin')
+    kdb.session.add(user)
+    kdb.session.commit()
+    payload = {'guid': user.guid, 'username': user.username, 'role': user.role}
+    with client.session_transaction() as sess:
+        sess['keyauth_user'] = payload
     return client

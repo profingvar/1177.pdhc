@@ -17,7 +17,7 @@ class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-secret-key')
     SQLALCHEMY_DATABASE_URI = os.environ.get(
         'DATABASE_URL',
-        'postgresql+psycopg://forms_user:forms_dev_password@localhost:9037/forms_1177'
+        'postgresql+psycopg://forms_user:change-me-in-production@localhost:9037/forms_1177'
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     PERMANENT_SESSION_LIFETIME = timedelta(hours=24)

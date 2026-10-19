@@ -4,7 +4,7 @@ services:
     container_name: forms_1177_db
     environment:
       POSTGRES_USER: forms_user
-      POSTGRES_PASSWORD: forms_dev_password
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set}
       POSTGRES_DB: forms_1177
     ports:
       - "127.0.0.1:9037:5432"

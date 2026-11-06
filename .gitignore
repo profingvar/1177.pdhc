@@ -25,4 +25,6 @@ pdhc_keyauth
 
 # Local working notes
 tickets_1177.txt
-changed_files.md
+# changed_files.md was listed here until 2026-11-06. It is required by
+# CLAUDE.md §4's repo contract (Rule 17), so ignoring it meant this repo
+# could never satisfy that contract. Tracked now.
